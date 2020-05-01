@@ -4,6 +4,7 @@ import datetime
 import board
 import busio
 import socket
+import logging
 from adafruit_ht16k33 import segments
 
 def get_ip():
@@ -21,6 +22,10 @@ def get_ip():
     finally:
         s.close()
     return IP
+
+# Set up logging
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 # Create the I2C interface.
 i2c = busio.I2C(board.SCL, board.SDA)
@@ -50,15 +55,17 @@ current_str = None
 while True:
     try:
         price = oe.get_elec_price()
-    except:
+    except Exception as err:
+        # Catch-all for errors
+        logging.error('Error retrieving price: {}'.format(err))
         price = None
 
     hour = datetime.datetime.now().hour
 
     # Dim display at certain times
-    if hour < 7 or hour >= 23:
+    if hour < 6 or hour >= 23:
         display.brightness = 0.1
-    elif hour >= 19:
+    elif hour < 7 or hour >= 19:
         display.brightness = 0.4
     else:
         display.brightness = 0.8

@@ -10,8 +10,6 @@ import requests
 from datetime import datetime
 from dateutil import tz
 
-class CurrentPriceNotFoundError(Exception):
-    pass
 
 def load_api_key_from_file(filename):
     with open(filename) as f:
@@ -24,6 +22,7 @@ class OctopusEnergy:
         self.cache_file = cache_file
         self.api_url = 'https://api.octopus.energy/v1/products/AGILE-18-02-21/electricity-tariffs/E-1R-AGILE-18-02-21-J/standard-unit-rates/'
         self.date_format = '%Y-%m-%dT%H:%M:%SZ'
+        self.data = None
 
     def get_elec_price(self, cache=True):
         """ Get current electricity price 
@@ -33,22 +32,28 @@ class OctopusEnergy:
 
         if cache:
             try:
-                with open(self.cache_file) as f:
-                    # Load cached data from file
-                    data = json.load(f)
-
-                    # Retrieve current price
-                    price = self._get_current_price_from_data(data)
-
-            except FileNotFoundError:
-                logging.warn('Cache file {} not found'.format(self.cache_file))
-
-            except (CurrentPriceNotFoundError, json.JSONDecodeError) as err:
+                # RAM cache
+                price = self._get_current_price_from_data(self.data)
+            except:
                 pass
+
+            if price is None:
+                # File cache
+                try:
+                    logging.info('Loading price data from cache file')
+                    with open(self.cache_file) as f:
+                        # Load cached data from file
+                        self.data = json.load(f)
+
+                        # Retrieve current price
+                        price = self._get_current_price_from_data(self.data)
+
+                except FileNotFoundError:
+                    logging.warn('Cache file {} not found'.format(self.cache_file))
         
         if price is None:
-            logging.info('Cache miss, loading from HTTP. {}'.format(err))
-            # Cache miss, get price via HTTP
+            logging.info('Loading price data over HTTP')
+            # Get price via HTTP
             data = self._get_data_http()
             price = self._get_current_price_from_data(data)
 
@@ -78,12 +83,16 @@ class OctopusEnergy:
                 if (valid_from <= current_time and
                     valid_to > current_time):
                     price = val['value_inc_vat']
-        except KeyError:
-            logging.error("Could not get price data: " + data['detail'])
 
-        if price is None:
-            raise CurrentPriceNotFoundError
-        
+        except KeyError:
+            try:
+                logging.error("Could not get price data: " + data['detail'])
+            except:
+                logging.error("Could not get price data or error info.")
+
+        except json.JSONDecodeError as err:
+            logging.error('JSON decode error: {}'.format(err))
+
         return price
 
 if __name__ == '__main__':
