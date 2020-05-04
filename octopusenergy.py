@@ -17,10 +17,9 @@ def load_api_key_from_file(filename):
         return s.strip()
 
 class OctopusEnergy:
-    def __init__(self, api_key, cache_file='cache.json'):
+    def __init__(self, api_key, api_url='https://api.octopus.energy/v1/products/AGILE-18-02-21/electricity-tariffs/E-1R-AGILE-18-02-21-J/standard-unit-rates/'):
         self.api_key = api_key
-        self.cache_file = cache_file
-        self.api_url = 'https://api.octopus.energy/v1/products/AGILE-18-02-21/electricity-tariffs/E-1R-AGILE-18-02-21-J/standard-unit-rates/'
+        self.api_url = api_url
         self.date_format = '%Y-%m-%dT%H:%M:%SZ'
         self.data = None
 
@@ -37,36 +36,17 @@ class OctopusEnergy:
             except:
                 pass
 
-            if price is None:
-                # File cache
-                try:
-                    logging.info('Loading price data from cache file')
-                    with open(self.cache_file) as f:
-                        # Load cached data from file
-                        self.data = json.load(f)
-
-                        # Retrieve current price
-                        price = self._get_current_price_from_data(self.data)
-
-                except FileNotFoundError:
-                    logging.warn('Cache file {} not found'.format(self.cache_file))
-        
         if price is None:
             logging.info('Loading price data over HTTP')
             # Get price via HTTP
-            data = self._get_data_http()
-            price = self._get_current_price_from_data(data)
+            self.data = self._get_data_http()
+            price = self._get_current_price_from_data(self.data)
 
         return price
 
     def _get_data_http(self):
         r = requests.get(self.api_url, auth=(self.api_key + ':', ''))
-        data = json.loads(r.text)
-        # Write latest data to cache file
-        with open(self.cache_file, 'w') as f:
-            f.write(r.text)
-            logging.info('HTTP data written to cache file {}'.format(self.cache_file))
-        return data
+        return json.loads(r.text)
 
     def _get_current_price_from_data(self, data):
         current_time = datetime.now()
