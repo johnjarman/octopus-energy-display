@@ -74,6 +74,10 @@ while True:
         display_str = "E"
     elif price >= -9.99 and price <= 99.99:
         display_str = "{:.2f}".format(price)
+    elif price >= -99.9 and price <= 999.9:
+        display_str = "{:.1f}".format(price)
+    elif price >= -999 and price <= 9999:
+        display_str = "{:.0f}".format(price)
     else:
         display_str = "----"
 
