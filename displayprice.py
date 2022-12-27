@@ -7,22 +7,6 @@ import socket
 import logging
 from adafruit_ht16k33 import segments
 
-def get_ip():
-    """
-    Utility function to find the IP address of the Pi.
-    From https://stackoverflow.com/a/28950776
-    """
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    try:
-        # doesn't even have to be reachable
-        s.connect(('10.255.255.255', 1))
-        IP = s.getsockname()[0]
-    except:
-        IP = '127.0.0.1'
-    finally:
-        s.close()
-    return IP
-
 # Set up logging
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -39,10 +23,10 @@ display.fill(1)
 time.sleep(1)
 display.fill(0)
 
-# Display IP address
-host_ip = get_ip()
+# Display hostname
+hostname = socket.gethostname()
 for i in range(0, 2):
-    display.marquee(host_ip + '    ', 0.5, False)
+    display.marquee(hostname + '    ', 0.2, False)
 
 display.fill(0)
 
