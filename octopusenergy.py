@@ -7,8 +7,7 @@ John Jarman johncjarman@gmail.com
 import logging
 import json
 import requests
-from datetime import datetime
-from dateutil import tz
+import datetime
 
 
 def load_api_key_from_file(filename):
@@ -49,17 +48,16 @@ class OctopusEnergy:
         return json.loads(r.text)
 
     def _get_current_price_from_data(self, data):
-        current_time = datetime.now()
-        utc = tz.tzutc()
-        local_tz = tz.tzlocal()
-        current_time.replace(tzinfo=local_tz)
-        current_time = current_time.astimezone(utc)
+        utc = datetime.timezone.utc
+        current_time = datetime.datetime.now(tz=utc)
         price = None
 
         try:
             for val in data['results']:
-                valid_from = datetime.strptime(val['valid_from'], self.date_format).replace(tzinfo=utc)
-                valid_to = datetime.strptime(val['valid_to'], self.date_format).replace(tzinfo=utc)
+                valid_from = datetime.datetime.strptime(val['valid_from'], 
+                                                        self.date_format).replace(tzinfo=utc)
+                valid_to = datetime.datetime.strptime(val['valid_to'], 
+                                                      self.date_format).replace(tzinfo=utc)
                 if (valid_from <= current_time and
                     valid_to > current_time):
                     price = val['value_inc_vat']
