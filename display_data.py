@@ -1,15 +1,26 @@
 import octopusenergy
+import carbonintensity
 import time
 import datetime
 import board
 import busio
-import socket
 import logging
+import argparse
 from adafruit_ht16k33 import segments
 
 # Set up logging
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
+
+# Configure command line arguments
+parser = argparse.ArgumentParser(
+                    prog = 'display_data',
+                    description = 'Display numeric data from API on 7-seg display')
+
+parser.add_argument('api',
+                    help="Which API to use ('octopus' or 'carbon')")
+
+api = parser.parse_args().api
 
 # Create the I2C interface.
 i2c = busio.I2C(board.SCL, board.SDA)
@@ -23,22 +34,20 @@ display.fill(1)
 time.sleep(1)
 display.fill(0)
 
-# Display hostname
-hostname = socket.gethostname()
-for i in range(0, 2):
-    display.marquee(hostname + '    ', 0.2, False)
-
-display.fill(0)
-
-api_key = octopusenergy.load_api_key_from_file('api_key.txt')
-
-oe = octopusenergy.OctopusEnergy(api_key)
+if api == 'octopus':
+    api_key = octopusenergy.load_api_key_from_file('api_key.txt')
+    api_interface = octopusenergy.OctopusEnergy(api_key)
+elif api == 'carbon':
+    api_interface = carbonintensity.CarbonIntensity()
+else:
+    raise ValueError('Specified API {} not found'.format(api))
+    
 
 current_str = None
 
 while True:
     try:
-        price = oe.get_elec_price()
+        price = api_interface.value
     except Exception as err:
         # Catch-all for errors
         logging.error('Error retrieving price: {}'.format(err))
@@ -55,7 +64,7 @@ while True:
         display.brightness = 0.8
 
     if price is None:
-        display_str = "E"
+        display_str = "Err "
     elif price >= -9.99 and price <= 99.99:
         display_str = "{:.2f}".format(price)
     elif price >= -99.9 and price <= 999.9:

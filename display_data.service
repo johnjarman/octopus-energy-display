@@ -1,0 +1,12 @@
+[Unit]
+Description=Octopus Energy price display
+After=multi-user.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/pi/octopus-energy-display
+User=pi
+ExecStart=/home/pi/octopus-energy-display/venv/bin/python3 /home/pi/octopus-energy-display/display_data.py carbon
+
+[Install]
+WantedBy=multi-user.target

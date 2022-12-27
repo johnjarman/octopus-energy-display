@@ -9,7 +9,6 @@ import json
 import requests
 import datetime
 
-
 def load_api_key_from_file(filename):
     with open(filename) as f:
         s = f.read()
@@ -21,22 +20,19 @@ class OctopusEnergy:
         self.api_url = api_url
         self.date_format = '%Y-%m-%dT%H:%M:%SZ'
         self.data = None
-
-    def get_elec_price(self, cache=True):
-        """ Get current electricity price 
-        @param bool cache: Allow caching of fetched values
+    @property
+    def value(self):
+        """ Get current electricity price
         """
         price = None
 
-        if cache:
-            try:
-                # RAM cache
-                price = self._get_current_price_from_data(self.data)
-            except:
-                pass
+        try:
+            # RAM cache
+            price = self._get_current_price_from_data(self.data)
+        except:
+            pass
 
         if price is None:
-            logging.info('Loading price data over HTTP')
             # Get price via HTTP
             self.data = self._get_data_http()
             price = self._get_current_price_from_data(self.data)
@@ -44,6 +40,7 @@ class OctopusEnergy:
         return price
 
     def _get_data_http(self):
+        logging.info('Loading price data over HTTP')
         r = requests.get(self.api_url, auth=(self.api_key + ':', ''))
         return json.loads(r.text)
 
@@ -54,10 +51,10 @@ class OctopusEnergy:
 
         try:
             for val in data['results']:
-                valid_from = datetime.datetime.strptime(val['valid_from'], 
-                                                        self.date_format).replace(tzinfo=utc)
+                valid_from = datetime.datetime.strptime(val['valid_from'],
+                                        self.date_format).replace(tzinfo=utc)
                 valid_to = datetime.datetime.strptime(val['valid_to'], 
-                                                      self.date_format).replace(tzinfo=utc)
+                                        self.date_format).replace(tzinfo=utc)
                 if (valid_from <= current_time and
                     valid_to > current_time):
                     price = val['value_inc_vat']
@@ -76,4 +73,4 @@ class OctopusEnergy:
 if __name__ == '__main__':
     api_key = load_api_key_from_file('api_key.txt')
     oe = OctopusEnergy(api_key)
-    print(oe.get_elec_price())
+    print(oe.value)
