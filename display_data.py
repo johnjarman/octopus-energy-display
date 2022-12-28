@@ -66,7 +66,11 @@ while True:
     if price is None:
         display_str = "Err "
     elif api == 'carbon' and price >= -999 and price <= 9999:
-        display_str = "{:4.0f}".format(price)
+        if api_interface.forecast:
+            # Turn on rightmost decimal to indicate forecast figure
+            display_str = "{:4.0f}.".format(price)
+        else:
+            display_str = "{:4.0f}".format(price)
     elif price >= -9.99 and price <= 99.99:
         display_str = "{:4.2f}".format(price)
     elif price >= -99.9 and price <= 999.9:

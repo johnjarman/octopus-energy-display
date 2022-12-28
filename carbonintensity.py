@@ -14,6 +14,7 @@ class CarbonIntensity:
         self.api_url = api_url
         self.date_format = '%Y-%m-%dT%H:%MZ'
         self.data = None
+        self.forecast = False
 
     @property
     def value(self):
@@ -51,6 +52,14 @@ class CarbonIntensity:
             if (valid_from <= current_time - correction and
                     valid_to > current_time - correction):
                 value = self.data['data'][0]['intensity']['actual']
+                self.forecast = False
+
+                if value is None:
+                    # Fallback to forecast data if actual not available
+                    logging.warn('Actual data unavailable, falling back to forecast')
+                    value = self.data['data'][0]['intensity']['forecast']
+                    self.forecast = True
+
         except KeyError:
             logging.error("Could not get data: KeyError")
 
