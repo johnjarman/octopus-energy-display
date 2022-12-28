@@ -15,53 +15,61 @@ class CarbonIntensity:
         self.date_format = '%Y-%m-%dT%H:%MZ'
         self.data = None
         self.forecast = False
+        self.last_checked = None
 
     @property
     def value(self):
         """ Current carbon intensity
         """
-        value = None
 
-        if self.data is not None:
-            # Try and get a value from cached value in self.data
-            value = self._get_current_value_from_data(self.data)
-            
-        if value is None:
-            self.data = self._get_data_http()
-            value = self._get_current_value_from_data(self.data)
+        value = self._get_current_value()
 
         return value
 
     def _get_data_http(self):
-        logging.info('Loading price data over HTTP')
+        logging.info('Loading carbon intensity data over HTTP')
         r = requests.get(self.api_url)
+
+        # Clear invalid flags, update last checked time
+        self.forecast = False
+        self.last_checked = datetime.datetime.now(tz=datetime.timezone.utc)
         return json.loads(r.text)
 
-    def _get_current_value_from_data(self, data):
+    def _get_current_value(self):
         utc = datetime.timezone.utc
         current_time = datetime.datetime.now(tz=utc)
         correction = datetime.timedelta(hours=0, minutes=30)
+        recheck_time = datetime.timedelta(hours=0, minutes=5)
+        
         value = None
 
         try:
-            valid_from = datetime.datetime.strptime(data['data'][0]['from'],
+            if self.data is None:
+                self.data = self._get_data_http()
+            
+            valid_from = datetime.datetime.strptime(self.data['data'][0]['from'],
                                         self.date_format).replace(tzinfo=utc)
-            valid_to = datetime.datetime.strptime(data['data'][0]['to'], 
+            valid_to = datetime.datetime.strptime(self.data['data'][0]['to'], 
                                         self.date_format).replace(tzinfo=utc)
-
-            if (valid_from <= current_time - correction and
+            if (self.forecast and (current_time-self.last_checked > recheck_time)) or not\
+               (valid_from <= current_time - correction and
                     valid_to > current_time - correction):
-                value = self.data['data'][0]['intensity']['actual']
+                # Get data from HTTP if needed.
+                self.data = self._get_data_http()
+
+            value = self.data['data'][0]['intensity']['actual']
+
+            if value is None:
+                # Fallback to forecast data if actual not available
+                if not self.forecast:
+                    logging.warning('Actual data unavailable, falling back to forecast')
+                value = self.data['data'][0]['intensity']['forecast']
+                self.forecast = True
+            else:
                 self.forecast = False
 
-                if value is None:
-                    # Fallback to forecast data if actual not available
-                    logging.warn('Actual data unavailable, falling back to forecast')
-                    value = self.data['data'][0]['intensity']['forecast']
-                    self.forecast = True
-
-        except KeyError:
-            logging.error("Could not get data: KeyError")
+        except KeyError as err:
+            logging.error("Could not get data: {}".format(err))
 
         except json.JSONDecodeError as err:
             logging.error('JSON decode error: {}'.format(err))
