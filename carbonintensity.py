@@ -70,9 +70,14 @@ class CarbonIntensity:
 
         except KeyError as err:
             logging.error("Could not get data: {}".format(err))
+            self.data = None
 
         except json.JSONDecodeError as err:
             logging.error('JSON decode error: {}'.format(err))
+            self.data = None
+        except Exception as err:
+            logging.error('Unhandled exception while processing data: {}'.format(err))
+            self.data = None
 
         return value
 
